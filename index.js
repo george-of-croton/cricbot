@@ -11,7 +11,7 @@ var TeamsObject = function(str) {
 	this.teamName = getCountryName(str[0])
 	this.players = getPlayers(str)
 }
-request.get('http://www.cricbuzz.com/live-cricket-scorecard/17356/otg-vs-akl-16th-match-the-ford-trophy-2017', function(req, res, body) {
+request.get('http://www.cricbuzz.com/live-cricket-scorecard/16670/nz-vs-aus-1st-odi-australia-tour-of-new-zealand-2017', function(req, res, body) {
 	var innings = []
 	innings.push($('#innings_1', body)
 		.children()

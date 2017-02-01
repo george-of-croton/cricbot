@@ -27,7 +27,9 @@ request.get('http://www.cricbuzz.com/live-cricket-scorecard/17356/otg-vs-akl-16t
 
 	innings.forEach(function(x) {
 		var team = new TeamsObject(x)
-		fs.writeFile(JSON.stringify(team), 'thingy.json', function(err) {
+		// team = JSON.stringify(team)
+		console.log(team)
+		fs.writeFile(team.teamName + ".json", JSON.stringify(team), function(err) {
 			if (err) console.log(err)
 			console.log("file written")
 		})
@@ -36,7 +38,7 @@ request.get('http://www.cricbuzz.com/live-cricket-scorecard/17356/otg-vs-akl-16t
 
 
 function getCountryName(str) {
-	return str.substring(0, str.indexOf("Innings")).trimLeft().trimLeft()
+	return str.substring(0, str.indexOf("Innings")).trimLeft().trimRight()
 }
 
 function getPlayers(str) {
@@ -54,16 +56,15 @@ function getPlayers(str) {
 
 
 function Player(str) {
-	this.playerName = str.trimLeft().trimRight()
+	this.playerName = playerName(str)
 	this.runs;
 	this.status;
 }
-// var thing = $('.row brief-summary').children().length
 
-
-// fs.writeFile('bs.js', thing, function(err) {
-// 	if (err) {
-// 		"fuck your mother"
-// 	}
-// 	console.log("Thou file twas writ")
-// })
+function playerName(str) {
+	var name = str.trimLeft().trimRight()
+	if (name[name.length - 1] == ")") {
+		name = name.substring(0, name.indexOf('(') - 1)
+	}
+	return name
+}

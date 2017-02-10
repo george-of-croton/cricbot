@@ -31,15 +31,14 @@ request.get('http://www.cricbuzz.com/live-cricket-scorecard/16670/nz-vs-aus-1st-
 })
 
 
+
 var TeamsObject = function(str) {
-	console.log(str, "this is str being passed to TeamsObject()")
+	// console.log(str, "this is str being passed to TeamsObject()")
 	this.teamName = getCountryName(str[0])
 	this.players = getPlayers(str)
 }
 
-function getCountryName(str) {
-	return str.substring(0, str.indexOf("Innings")).trimLeft().trimRight()
-}
+
 
 function getPlayers(str) {
 	var players = []
@@ -58,11 +57,52 @@ function getPlayers(str) {
 }
 
 
+
+function getCountryName(str) {
+	return str.substring(0, str.indexOf("Innings")).trimLeft().trimRight()
+}
+
+
+
 function Player(item1, item2) {
 	this.playerName = playerName(item1)
 	this.runs = getRuns(item2);
 	this.balls = getBalls(item2)
-	this.status;
+	this.status = getStatus(item2);
+}
+
+function getStatus(str) {
+	var arr = str.split("  ")
+	if (arr[0] == "not out") {
+		return arr[0]
+	} else {
+		arr = arr[0].split(" ")
+		return causeOfWicket(arr)
+	}
+}
+
+
+function causeOfWicket(arr) {
+	// console.log(arr)
+	switch (arr[0]) {
+		case "c":
+			return "caught"
+			break;
+		case "b":
+			return "bowled"
+			break;
+		case "st":
+			return "stumped"
+			break;
+		case "run":
+			return arr[0] + " " + arr[1]
+		case "":
+			arr.shift()
+			console.log(arr)
+			return causeOfWicket(arr, "this is arr")
+			break;
+		default:
+	}
 }
 
 function getRuns(str) {
@@ -70,10 +110,14 @@ function getRuns(str) {
 	return arr[arr.length - 6]
 }
 
+
+
 function getBalls(str) {
 	var arr = str.split(" ")
 	return arr[arr.length - 5]
 }
+
+
 
 function playerName(str) {
 	var name = str.trimLeft().trimRight()

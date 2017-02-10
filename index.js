@@ -2,6 +2,8 @@ var request = require('request');
 var fs = require('fs')
 var $ = require('cheerio')
 
+var currentBatsmen = []
+
 
 // http://www.cricbuzz.com/live-cricket-scorecard/17356/otg-vs-akl-16th-match-the-ford-trophy-2017
 // http://www.cricbuzz.com/live-cricket-scorecard/16670/nz-vs-aus-1st-odi-australia-tour-of-new-zealand-2017
@@ -20,12 +22,25 @@ request.get('http://www.cricbuzz.com/live-cricket-scorecard/16670/nz-vs-aus-1st-
 		.text()
 		.split("    "))
 
+	var count = 0;
+
 	innings.forEach(function(x) {
 		var team = new TeamsObject(x);
-		console.log(team)
-		fs.writeFile(team.teamName + ".json", JSON.stringify(team), function(err) {
-			if (err) console.log(err)
-			console.log("file written")
+		fs.readFile(team.teamName + ".json", 'utf8', function(err, data) {
+			if (err) console.log("error:", err)
+			teamPrevious = JSON.parse(data)
+			teamPrevious.players.forEach(function(x) {
+				if (x.status == "not out") {
+					team.players.forEach(function(y) {
+						if (x.playerName == y.playerName && y.runs - x.runs !== 0) {
+							console.log(y.playerName + runsToWords(y.runs - x.runs))
+							// fs.writeFile(team.teamName + ".json", JSON.stringify(team), function(err) {
+							// 	if (err) console.log(err)
+							// 	console.log("file written")
+						}
+					})
+				}
+			})
 		})
 	})
 })
@@ -63,6 +78,29 @@ function getCountryName(str) {
 }
 
 
+function runsToWords(num) {
+	switch (num) {
+		case 1:
+			return " scored one run"
+			break
+		case 2:
+			return " scored two runs"
+			break
+		case 3:
+			return " scored three runs"
+			break
+		case 4:
+			return " reaches the boundary for four"
+			break
+		case 5:
+			return " scores five runs"
+		case 6:
+			return " hits it all the way for six!"
+			break
+		default:
+	}
+}
+
 
 function Player(item1, item2) {
 	this.playerName = playerName(item1)
@@ -98,7 +136,6 @@ function causeOfWicket(arr) {
 			return arr[0] + " " + arr[1]
 		case "":
 			arr.shift()
-			console.log(arr)
 			return causeOfWicket(arr, "this is arr")
 			break;
 		default:

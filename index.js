@@ -3,54 +3,79 @@ var fs = require('fs')
 var $ = require('cheerio')
 
 var currentBatsmen = []
-
+var url = 'http://www.cricbuzz.com/live-cricket-scorecard/16674/nz-vs-rsa-1st-odi-south-africa-tour-of-new-zealand-2017'
+var firstCall;
 
 // http://www.cricbuzz.com/live-cricket-scorecard/17356/otg-vs-akl-16th-match-the-ford-trophy-2017
 // http://www.cricbuzz.com/live-cricket-scorecard/16670/nz-vs-aus-1st-odi-australia-tour-of-new-zealand-2017
 
-request.get('http://www.cricbuzz.com/live-cricket-scorecard/16670/nz-vs-aus-1st-odi-australia-tour-of-new-zealand-2017', function(req, res, body) {
-	var innings = []
-	innings.push($('#innings_1', body)
-		.children()
-		.first()
-		.text()
-		.split("    "))
 
-	innings.push($('#innings_2', body)
-		.children()
-		.first()
-		.text()
-		.split("    "))
+function updateGame(Aurl) {
+	request.get(Aurl, function(req, res, body) {
+		var innings = []
+		innings.push($('#innings_1', body)
+			.children()
+			.first()
+			.text()
+			.split("    "))
 
-	var count = 0;
+		innings.push($('#innings_2', body)
+			.children()
+			.first()
+			.text()
+			.split("    "))
 
-	innings.forEach(function(x) {
-		var team = new TeamsObject(x);
-		fs.readFile(team.teamName + ".json", 'utf8', function(err, data) {
-			if (err) console.log("error:", err)
-			teamPrevious = JSON.parse(data)
-			teamPrevious.players.forEach(function(x) {
-				if (x.status == "not out") {
-					team.players.forEach(function(y) {
-						if (x.playerName == y.playerName && y.runs - x.runs !== 0) {
-							console.log(y.playerName + runsToWords(y.runs - x.runs))
-							// fs.writeFile(team.teamName + ".json", JSON.stringify(team), function(err) {
-							// 	if (err) console.log(err)
-							// 	console.log("file written")
+		var count = 0;
+
+		innings.forEach(function(x) {
+			var team = new TeamsObject(x);
+			console.log(team)
+			fs.readFile(team.teamName + ".json", 'utf8', function(err, data) {
+				if (err) {
+					fs.writeFile(team.teamName + ".json", JSON.stringify(team), function(err) {
+						if (err) console.log(err)
+						console.log("file written")
+					})
+				} else {
+					var teamPrevious = JSON.parse(data)
+					teamPrevious.players.forEach(function(x) {
+						if (x.status == "not out") {
+							team.players.forEach(function(y) {
+								if (x.playerName == y.playerName && y.runs - x.runs !== 0 || x.over !== y.over) {
+									console.log(y.playerName + runsToWords(y.runs - x.runs))
+									console.log(y.over)
+									fs.writeFile(team.teamName + ".json", JSON.stringify(team), function(err) {
+										if (err) console.log(err)
+										console.log("file written")
+									})
+								} else if (x.playerName == y.playerName && y.runs - x.runs === 0) {
+									console.log("no change in score for " + y.playerName, y.over + "'s gone")
+								}
+							})
 						}
 					})
 				}
 			})
+
+
 		})
 	})
-})
+}
+
+// setInterval(function() {
+updateGame(url)
+// }, 6000)
+// updateGame(url)
+
 
 
 
 var TeamsObject = function(str) {
-	// console.log(str, "this is str being passed to TeamsObject()")
+	console.log(str)
+	this.over = getOvers(str.slice(str.length - 2, str.length))
 	this.teamName = getCountryName(str[0])
 	this.players = getPlayers(str)
+	this.total;
 }
 
 
@@ -134,6 +159,10 @@ function causeOfWicket(arr) {
 			break;
 		case "run":
 			return arr[0] + " " + arr[1]
+			break;
+		case "lbw":
+			return "LBW"
+			break;
 		case "":
 			arr.shift()
 			return causeOfWicket(arr, "this is arr")
@@ -152,6 +181,22 @@ function getRuns(str) {
 function getBalls(str) {
 	var arr = str.split(" ")
 	return arr[arr.length - 5]
+}
+
+function getOvers(str) {
+	var arr = []
+	var result
+	str.forEach(function(x) {
+		arr.push(x.split("  "))
+	})
+	arr.forEach(function(x) {
+		if (x[0] === "Extras") {
+			result = x[x.length - 1].split(" ")
+			// console.log(parseFloat(result[result.length - 2]))
+			result = parseFloat(result[result.length - 2])
+		}
+	})
+	return result
 }
 
 

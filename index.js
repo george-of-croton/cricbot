@@ -1,11 +1,28 @@
 var request = require('request');
 var fs = require('fs')
 var $ = require('cheerio')
+var request = require('request');
+var Twitter = require('twitter')
+require('dotenv').config()
 
-var currentBatsmen = []
+var client = new Twitter({
+	consumer_key: process.env.consumer_key,
+	consumer_secret: process.env.consumer_secret,
+	access_token_key: process.env.access_token_key,
+	access_token_secret: process.env.access_token_secret
+})
+
+
+
+
+
+
 var url = 'http://www.cricbuzz.com/live-cricket-scorecard/16674/nz-vs-rsa-1st-odi-south-africa-tour-of-new-zealand-2017'
-var firstCall;
-
+var game = {
+	overs: [],
+	teams: [],
+	format: 34,
+}
 // http://www.cricbuzz.com/live-cricket-scorecard/17356/otg-vs-akl-16th-match-the-ford-trophy-2017
 // http://www.cricbuzz.com/live-cricket-scorecard/16670/nz-vs-aus-1st-odi-australia-tour-of-new-zealand-2017
 
@@ -25,41 +42,14 @@ function updateGame(Aurl) {
 			.text()
 			.split("    "))
 
-		var count = 0;
-
-		innings.forEach(function(x) {
-			var team = new TeamsObject(x);
-			console.log(team)
-			fs.readFile(team.teamName + ".json", 'utf8', function(err, data) {
-				if (err) {
-					fs.writeFile(team.teamName + ".json", JSON.stringify(team), function(err) {
-						if (err) console.log(err)
-						console.log("file written")
-					})
-				} else {
-					var teamPrevious = JSON.parse(data)
-					teamPrevious.players.forEach(function(x) {
-						if (x.status == "not out") {
-							team.players.forEach(function(y) {
-								if (x.playerName == y.playerName && y.runs - x.runs !== 0 || x.over !== y.over) {
-									console.log(y.playerName + runsToWords(y.runs - x.runs))
-									console.log(y.over)
-									fs.writeFile(team.teamName + ".json", JSON.stringify(team), function(err) {
-										if (err) console.log(err)
-										console.log("file written")
-									})
-								} else if (x.playerName == y.playerName && y.runs - x.runs === 0) {
-									console.log("no change in score for " + y.playerName, y.over + "'s gone")
-								}
-							})
-						}
-					})
-				}
-			})
-
-
-		})
+		teamSaver(innings)
 	})
+}
+
+var options = {
+	headers: {
+
+	}
 }
 
 // setInterval(function() {
@@ -67,17 +57,103 @@ updateGame(url)
 // }, 6000)
 // updateGame(url)
 
+function teamSaver(array) {
+	var signalsent = false;
+	array.forEach(function(x) {
+		var team = new TeamsObject(x);
+		console.log(team)
+		console.log(signalsent)
+		game.overs.push(team.over)
+		game.teams.push(team.teamName)
+		fs.readFile(team.teamName + ".json", 'utf8', function(err, data) {
+			if (err) {
+				fs.writeFile(team.teamName + ".json", JSON.stringify(team), function(err) {
+					if (err) console.log(err)
+					console.log("file written")
+				})
+				fs.writeFile('gamedata' + ".json", JSON.stringify(game), function(err) {
+					if (err) console.log(err)
+					console.log("file written")
+				})
+			} else {
+				var teamPrevious = JSON.parse(data)
+				teamPrevious.players.forEach(function(x) {
+					if (teamPrevious.batting !== true) {
+						game.currentlyBowling = team.TeamName
+					}
+					if (x.status == "not out") {
+						team.players.forEach(function(y) {
+							if (x.playerName == y.playerName && y.runs - x.runs !== 0 || x.over !== y.over) {
+								team.batting = true
+								signalsent = true
+								var message = y.playerName + runsToWords(y.runs - x.runs) + ". " + team.over + " overs gone"
+								postTweet(message)
+								fs.writeFile(team.teamName + ".json", JSON.stringify(team, game), function(err) {
+									if (err) console.log(err)
+									console.log("file written")
+								})
+							} else if (teamPrevious.batting === true && x.playerName == y.playerName && y.runs - x.runs === 0 && signalsent === false) {
+								console.log("hello")
+								var message = "no run for " + team.teamName + " " + team.over + " overs gone"
+								postTweet(message)
+								signalsent = true;
+								fs.writeFile(team.teamName + ".json", JSON.stringify(team), function(err) {
+									if (err) console.log(err)
+									console.log("file written")
+								})
+							}
+						})
+					}
+				})
+			}
+		})
+	})
+}
+
+function postTweet(string) {
+	client.post('statuses/update', {
+		status: string,
+		screen_name: 'opportunitynz'
+	}, function(error, tweet, response) {
+		if (error) {
+			console.log(error)
+		};
+		console.log(tweet);
+		console.log(response)
+	})
+}
 
 
 
 var TeamsObject = function(str) {
-	console.log(str)
+	this.score = getScore(str.slice(str.length - 2, str.length))
+	this.batting;
 	this.over = getOvers(str.slice(str.length - 2, str.length))
 	this.teamName = getCountryName(str[0])
 	this.players = getPlayers(str)
-	this.total;
 }
 
+function getScore(array) {
+	// console.log(array)
+	var arr = []
+	var result
+	array.forEach(function(x) {
+		arr.push(x.split("  "))
+	})
+	arr.forEach(function(x) {
+		if (x[0] === "Extras") {
+			var runs = x[x.length - 2]
+			var splitresult = x[x.length - 1].split(" ")
+			var wickets = splitresult[splitresult.length - 4]
+			wickets = parseFloat(wickets.slice(wickets.indexOf('(') + 1, wickets.length))
+			result = {
+				runs: parseInt(runs),
+				wickets: wickets
+			}
+		}
+	})
+	return result
+}
 
 
 function getPlayers(str) {

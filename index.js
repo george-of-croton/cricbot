@@ -46,23 +46,15 @@ function updateGame(Aurl) {
 	})
 }
 
-var options = {
-	headers: {
-
-	}
-}
 
 // setInterval(function() {
 updateGame(url)
-// }, 6000)
-// updateGame(url)
+// }, 3000)
 
 function teamSaver(array) {
 	var signalsent = false;
 	array.forEach(function(x) {
 		var team = new TeamsObject(x);
-		console.log(team)
-		console.log(signalsent)
 		game.overs.push(team.over)
 		game.teams.push(team.teamName)
 		fs.readFile(team.teamName + ".json", 'utf8', function(err, data) {
@@ -78,10 +70,7 @@ function teamSaver(array) {
 			} else {
 				var teamPrevious = JSON.parse(data)
 				teamPrevious.players.forEach(function(x) {
-					if (teamPrevious.batting !== true) {
-						game.currentlyBowling = team.TeamName
-					}
-					if (x.status == "not out") {
+					if (x.status == "not out" && team.over < game.format && team.over > 0) {
 						team.players.forEach(function(y) {
 							if (x.playerName == y.playerName && y.runs - x.runs !== 0 || x.over !== y.over) {
 								team.batting = true
@@ -92,10 +81,11 @@ function teamSaver(array) {
 									if (err) console.log(err)
 									console.log("file written")
 								})
-							} else if (teamPrevious.batting === true && x.playerName == y.playerName && y.runs - x.runs === 0 && signalsent === false) {
-								console.log("hello")
-								var message = "no run for " + team.teamName + " " + team.over + " overs gone"
-								postTweet(message)
+							} else if (x.playerName == y.playerName && y.runs - x.runs === 0 && signalsent === false) {
+								team.batting = true;
+								var message = "No run for " + team.teamName + " " + team.score.runs + "/" + team.score.wickets
+								console.log(message)
+								// postTweet(message)
 								signalsent = true;
 								fs.writeFile(team.teamName + ".json", JSON.stringify(team), function(err) {
 									if (err) console.log(err)
@@ -119,7 +109,6 @@ function postTweet(string) {
 			console.log(error)
 		};
 		console.log(tweet);
-		console.log(response)
 	})
 }
 
@@ -222,7 +211,6 @@ function getStatus(str) {
 
 
 function causeOfWicket(arr) {
-	// console.log(arr)
 	switch (arr[0]) {
 		case "c":
 			return "caught"
@@ -268,7 +256,6 @@ function getOvers(str) {
 	arr.forEach(function(x) {
 		if (x[0] === "Extras") {
 			result = x[x.length - 1].split(" ")
-			// console.log(parseFloat(result[result.length - 2]))
 			result = parseFloat(result[result.length - 2])
 		}
 	})
